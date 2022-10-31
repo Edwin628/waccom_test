@@ -25,7 +25,8 @@
 #include <memory>
 #include <crtdbg.h>
 #include <fstream>
-
+#include <time.h>
+#include <windows.h>
 
 #include "WacomMultiTouch.h"
 #include "WintabUtils.h"
@@ -732,6 +733,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			static POINT ptNew = {0};
 			static UINT prsOld = 0;
 			static UINT prsNew = 0;
+			SYSTEMTIME sys;
+			GetLocalTime(&sys);
+			char tmp_pen[64] = { NULL };
+			sprintf(tmp_pen, "%4d-%02d-%02d %02d:%02d:%02d ms:%03d", sys.wYear, sys.wMonth, sys.wDay, sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
+			
+			DebugTrace("This is msg from wintab for pendata\n");
+			DebugTrace("Time is: %s\n", tmp_pen);
 
 			if (gpWTPacket((HCTX)lParam, wParam, &wintabPkt))
 			{
@@ -1248,17 +1256,23 @@ WacomMTHitRectPtr GetAppHitRect()
 void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 {
 	SIZE rawSize = {g_caps[device].ScanSizeX, g_caps[device].ScanSizeY};
+	SYSTEMTIME sys;
+	GetLocalTime(&sys);
+	char tmp[64] = { NULL };
+	sprintf(tmp, "%4d-%02d-%02d %02d:%02d:%02d ms:%03d", sys.wYear, sys.wMonth, sys.wDay, sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
+
 	DebugTrace("raw data frame:%d\n", framenumber);
+	DebugTrace("raw data frame: %s\n", tmp);
 	DebugTrace("raw data elementCount:%d ScanSizeX:%d raw data ScanSizeY:%d\n", count, rawSize.cx, rawSize.cy);
 
 	std::ofstream myfile;
-	myfile.open("./Output/example.txt", std::ofstream::app);
+	myfile.open("./Output/rawdata.txt", std::ofstream::app);
 	myfile << "raw data frame:" << framenumber << " raw data ScanSizeX:" << rawSize.cx << " raw data ScanSizeY: " << rawSize.cy << "\n";
 	
-
+	
 	if (count && rawBuf)
 	{
-		ClearScreen();
+		//ClearScreen();
 
 		HPEN pen = CreatePen(PS_SOLID, 2, RGB(255,0,0));
 		HPEN oldPen = static_cast<HPEN>(SelectObject(g_hdc, pen));
@@ -1269,6 +1283,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 			{
 				unsigned short value = rawBuf[sy * rawSize.cx + sx];
 				myfile << value << " ";
+				/*
 				if (value > 4)
 				{
 					int X = sx * static_cast<int>(g_caps[device].LogicalWidth)  / rawSize.cx + static_cast<int>(g_caps[device].LogicalOriginX);
@@ -1285,14 +1300,14 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 						//SetPixel(g_hdc, pt.x, pt.y, RGB(255, 0, 0));
 					}
 				}
+				*/
 			}
 			myfile << "\n";
 		}
-
 		SelectObject(g_hdc, oldPen);
 		DeleteObject(pen);
-		myfile.close();
 	}
+	myfile.close();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

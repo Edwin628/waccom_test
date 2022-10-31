@@ -1,6 +1,4 @@
-﻿  stdafx.cpp
-  WacomMT_Scribble.cpp
-  WacomMultiTouch.cpp
-  WintabUtils.cpp
-  Generating Code...
+﻿  WacomMT_Scribble.cpp
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(739,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1262,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   WacomMT_Scribble.vcxproj -> D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\Debug\WacomMT_Scribble.exe
