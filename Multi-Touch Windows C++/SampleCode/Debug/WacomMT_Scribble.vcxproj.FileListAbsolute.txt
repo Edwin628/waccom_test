@@ -1,0 +1,2 @@
+D:\aibin\wacom-device-kit-windows-master\wacom-device-kit-windows-master\Multi-Touch Windows C++\SampleCode\Debug\WacomMT_Scribble.exe
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\Debug\WacomMT_Scribble.exe
