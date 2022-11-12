@@ -44,7 +44,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Wintab support headers
-#define PACKETDATA	(PK_X | PK_Y | PK_BUTTONS | PK_NORMAL_PRESSURE)
+#define PACKETDATA	(PK_X | PK_Y | PK_Z | PK_ORIENTATION | PK_BUTTONS | PK_NORMAL_PRESSURE)
 #define PACKETMODE	PK_BUTTONS
 #include "pktdef.h"
 
@@ -733,6 +733,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			static POINT ptNew = {0};
 			static UINT prsOld = 0;
 			static UINT prsNew = 0;
+			static ORIENTATION	porientationNew = {0,0,0};
+
 			SYSTEMTIME sys;
 			GetLocalTime(&sys);
 			char tmp_pen[64] = { NULL };
@@ -745,7 +747,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				ptNew.x = wintabPkt.pkX;
 				ptNew.y = wintabPkt.pkY;
+				// ptNew.z = wintabPkt.pkZ;
 				prsNew = wintabPkt.pkNormalPressure;
+				porientationNew = wintabPkt.pkOrientation;
+
+				std::ofstream mypenfile;
+				mypenfile.open("./Output/pendata.txt", std::ofstream::app);
+				mypenfile << "Time stamps: " << tmp_pen << "pen X:" << ptNew.x << " pen Y:" << ptNew.y << "\n" << " pen Orientation orAltitude: "
+					<< porientationNew.orAltitude << " orAzimuth: " << porientationNew.orAzimuth << " orTwist : " << porientationNew.orTwist << "\n";
 
 				if ((ptNew.x != ptOld.x) || (ptNew.y != ptOld.y))
 				{
@@ -755,12 +764,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						ptNew.x, ptNew.y,
 						ptOld.x, ptOld.y,
 						(bMoveToPoint ? "Move" : "Draw"));
+					DebugTrace("About pen orientation: orAltitude:%d, orAzimuth:%d, orTwist:%d \n", porientationNew.orAltitude, porientationNew.orAzimuth, porientationNew.orTwist);
 					DrawPenData(ptNew, prsNew, bMoveToPoint);
 
 					// Keep track of last time we did move or draw.
 					ptOld = ptNew;
 					prsOld = prsNew;
 				}
+				mypenfile.close();
 			}
 			break;
 		}
@@ -1267,7 +1278,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 
 	std::ofstream myfile;
 	myfile.open("./Output/rawdata.txt", std::ofstream::app);
-	myfile << "raw data frame:" << framenumber << " raw data ScanSizeX:" << rawSize.cx << " raw data ScanSizeY: " << rawSize.cy << "\n";
+	myfile << "Time stamps: " << tmp << " raw data frame:" << framenumber << " raw data ScanSizeX:" << rawSize.cx << " raw data ScanSizeY: " << rawSize.cy << "\n";
 	
 	
 	if (count && rawBuf)
@@ -1283,7 +1294,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 			{
 				unsigned short value = rawBuf[sy * rawSize.cx + sx];
 				myfile << value << " ";
-				/*
+			
 				if (value > 4)
 				{
 					int X = sx * static_cast<int>(g_caps[device].LogicalWidth)  / rawSize.cx + static_cast<int>(g_caps[device].LogicalOriginX);
@@ -1300,7 +1311,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 						//SetPixel(g_hdc, pt.x, pt.y, RGB(255, 0, 0));
 					}
 				}
-				*/
+				
 			}
 			myfile << "\n";
 		}
