@@ -71,9 +71,20 @@ enum class EDataType
 HINSTANCE								hInst = NULL;
 std::wstring							szTitle = L"WacomMT_Scribble Pen, Consumer, Finger, HWND";
 std::wstring							szWindowClass = L"WACOMMT_SCRIBBLE";
+std::wstring							inputNameTitle = L"Please input your name";
+std::wstring							textClass = L"Text";
+std::ofstream							mypenfile;
+std::ofstream							myfile;
+std::string								mypenfilename;
+std::string								myfilename;
+TCHAR lpszPassword[16];
+WORD cchPassword;
+
+
 HWND										g_mainWnd = NULL;
 HDC										g_hdc = NULL;
 HWND										g_hWndAbout = NULL;
+HWND										g_hWndInput = NULL;
 int										g_maxPressure = 1024;
 
 // Cached client rect (system coordinates).
@@ -105,9 +116,10 @@ std::map<int, WacomMTHitRectPtr>	g_lastWTHitRect;
 bool										g_useConfidenceBits = true;
 bool										g_ObserverMode = false;
 
-EDataType								g_DataType = EDataType::EFingerData;
+EDataType								g_DataType = EDataType::ENoData;
 bool										g_UseHWND = true;
 bool										g_UseWinHitRect = true;
+bool										writeTofile = false;
 
 CRITICAL_SECTION						g_graphicsCriticalSection;
 
@@ -118,6 +130,7 @@ ATOM					MyRegisterClass(HINSTANCE hInstance);
 BOOL					InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	PasswordProc(HWND, UINT, WPARAM, LPARAM);
 void					ClearScreen();
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -245,6 +258,8 @@ std::string GetStateString(WacomMTFingerState state_I)
 		}
 	}
 }
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Purpose
@@ -420,6 +435,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				ShowError("Could not initialize Wacom Multi-Touch API.");
 			}
+
+
 			break;
 		}
 
@@ -435,6 +452,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				DeleteObject(g_hPenMap[idx]);
 			}
+			mypenfile.close();
+			myfile.close();
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 
@@ -494,6 +513,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					DumpCaps(true);
 					break;
 				}
+				
 
 				// Change between Consumer (default) and Observer mode.
 				// See the Wacom MTAPI Developer docs for more on the difference.
@@ -539,13 +559,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				// See the Wacom MTAPI Developer docs for more on the difference.
 				case IDM_FINGER:
 				case IDM_BLOB:
+				case IDM_STOP:
 				case IDM_RAW:
 				{
-					EDataType typeHit = (wmId == IDM_FINGER) ? EDataType::EFingerData : (wmId == IDM_BLOB) ? EDataType::EBlobData : EDataType::ERawData;
+					if (wmId == IDM_RAW) {
+						g_hWndInput = CreateDialog(hInst, MAKEINTRESOURCE(IDD_INPUTBOX), hWnd, PasswordProc);
+						//g_hWndInput = CreateWindow(inputNameTitle.c_str(), 0, WS_BORDER | WS_CHILD | WS_VISIBLE, 56, 10, 50, 18, hWnd, 0, hInst, 0);
+						//DialogBox(hInst,MAKEINTRESOURCE(IDD_PASSWORD),hWnd,PasswordProc);
+						ShowWindow(g_hWndInput, SW_SHOW);
+						writeTofile = true;
+
+						/*
+						std::stringstream sspen;
+						std::wstring arr_wpen(lpszPassword);
+						std::string arr_spen(arr_wpen.begin(), arr_wpen.end());
+						sspen << "./Output/" << arr_spen << "_pendata.txt";
+						mypenfilename = sspen.str();
+
+						std::stringstream ss;
+						std::wstring arr_w(lpszPassword);
+						std::string arr_s(arr_w.begin(), arr_w.end());
+						ss << "./Output/" << arr_s << "_rawdata.txt";
+						myfilename = ss.str();
+						
+						*/
+					}
+					else { writeTofile = false; }
+					EDataType typeHit = (wmId == IDM_STOP) ? EDataType::ENoData  : EDataType::ERawData;
 					for (size_t idx = 0; idx < g_devices.size(); idx++)
 					{
 						UnregisterForData(g_devices[idx], hWnd);
 					}
+					
+					
 					if (g_DataType == typeHit)
 					{
 						g_DataType = EDataType::ENoData;
@@ -555,9 +601,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						g_DataType = typeHit;
 					}
 
-					CheckMenuItem(menu, IDM_FINGER, (g_DataType == EDataType::EFingerData ? MF_CHECKED : MF_UNCHECKED));
-					CheckMenuItem(menu, IDM_BLOB, (g_DataType == EDataType::EBlobData ? MF_CHECKED : MF_UNCHECKED));
+					g_DataType = typeHit;
+
+					//CheckMenuItem(menu, IDM_FINGER, (g_DataType == EDataType::EFingerData ? MF_CHECKED : MF_UNCHECKED));
+					//CheckMenuItem(menu, IDM_BLOB, (g_DataType == EDataType::EBlobData ? MF_CHECKED : MF_UNCHECKED));
 					CheckMenuItem(menu, IDM_RAW, (g_DataType == EDataType::ERawData ? MF_CHECKED : MF_UNCHECKED));
+					CheckMenuItem(menu, IDM_STOP, (g_DataType == EDataType::ENoData ? MF_CHECKED : MF_UNCHECKED));
 
 					for (size_t idx = 0; idx < g_devices.size(); idx++)
 					{
@@ -568,6 +617,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					ClearScreen();
 					break;
 				}
+
+				/*
+				case IDM_STOP: {
+					ClearScreen();
+					break;
+				}
+				*/
+				
 
 				// Wacom MTAPI has different mechanisms for tracking touch. The API can handle it itself
 				// or the developer can handle it manually.
@@ -616,6 +673,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				case IDM_ERASE:
 				{
+					std::remove(myfilename.c_str());
+					std::remove(mypenfilename.c_str());
 					ClearScreen();
 					break;
 				}
@@ -636,8 +695,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_PAINT:
 		{
+			HFONT hFontOriginal, hFont1, hFont2, hFont3;
 			PAINTSTRUCT ps = {0};
 			HDC hdc = BeginPaint(hWnd, &ps);
+			RECT rect;
+
+			hFont2 = CreateFont(100, 42, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+				CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Times New Roman"));
+			SelectObject(hdc, hFont2);
+			GetClientRect(hWnd, &rect);
+			DrawText(hdc, TEXT("plese write the following sentence:\n test input"), -1, &rect, DT_CENTER | DT_VCENTER);
 
 			// Forcing a "no-op" LineTo allows display to refresh pen data, upon getting
 			// this WM_PAINT message due to the InvalidateRect() call in DrawPenData().
@@ -751,10 +818,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				prsNew = wintabPkt.pkNormalPressure;
 				porientationNew = wintabPkt.pkOrientation;
 
-				std::ofstream mypenfile;
-				mypenfile.open("./Output/pendata.txt", std::ofstream::app);
-				mypenfile << "Time stamps: " << tmp_pen << "pen X:" << ptNew.x << " pen Y:" << ptNew.y << "\n" << " pen Orientation orAltitude: "
-					<< porientationNew.orAltitude << " orAzimuth: " << porientationNew.orAzimuth << " orTwist : " << porientationNew.orTwist << "\n";
+
+				std::stringstream sspen;
+				std::wstring arr_w(lpszPassword);
+				std::string arr_s(arr_w.begin(), arr_w.end());
+				sspen << "./Output/" << arr_s << "_pendata.txt";
+				mypenfilename = sspen.str();
+
+				if (writeTofile) {
+					mypenfile.open(mypenfilename, std::ofstream::app);
+					mypenfile << "Time stamps: " << tmp_pen << "pen X:" << ptNew.x << " pen Y:" << ptNew.y << "\n" << " pen Orientation orAltitude: "
+						<< porientationNew.orAltitude << " orAzimuth: " << porientationNew.orAzimuth << " orTwist : " << porientationNew.orTwist << "\n";
+					mypenfile.close();
+				}
+				
 
 				if ((ptNew.x != ptOld.x) || (ptNew.y != ptOld.y))
 				{
@@ -771,7 +848,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					ptOld = ptNew;
 					prsOld = prsNew;
 				}
-				mypenfile.close();
+				
 			}
 			break;
 		}
@@ -783,6 +860,78 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	return 0;
 }
+
+
+
+INT_PTR CALLBACK PasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		// Set password character to a plus sign (+) 
+		// SendDlgItemMessage(hDlg, IDC_INPUT_TEXT ,EM_SETPASSWORDCHAR,(WPARAM)'+',(LPARAM)0);
+
+		// Set the default push button to "Cancel." 
+		SendMessage(hDlg,DM_SETDEFID,(WPARAM)IDCANCEL,(LPARAM)0);
+
+		return TRUE;
+
+	case WM_COMMAND:
+		// Set the default push button to "OK" when the user enters text. 
+		if (HIWORD(wParam) == EN_CHANGE &&
+			LOWORD(wParam) == IDC_INPUT_TEXT)
+		{
+			SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDOK, (LPARAM)0);
+		}
+		switch (wParam)
+		{
+		case IDOK:
+			// Get number of characters. 
+			cchPassword = (WORD)SendDlgItemMessage(hDlg, IDC_INPUT_TEXT, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			if (cchPassword >= 16)
+			{
+				MessageBox(hDlg, L"Too many characters.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			else if (cchPassword == 0)
+			{
+				MessageBox(hDlg, L"No characters entered.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+
+			// Put the number of characters into first word of buffer. 
+			*((LPWORD)lpszPassword) = cchPassword;
+
+			// Get the characters. 
+			SendDlgItemMessage(hDlg, IDC_INPUT_TEXT, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPassword);
+
+			// Null-terminate the string. 
+			lpszPassword[cchPassword] = 0;
+
+
+			MessageBox(hDlg, lpszPassword, L"Did it work?", MB_OK);
+
+			// Call a local password-parsing function. 
+			// ParsePassword(lpszPassword);
+
+			EndDialog(hDlg, TRUE);
+			return TRUE;
+
+		case IDCANCEL:
+			EndDialog(hDlg, TRUE);
+			return TRUE;
+		}
+		return 0;
+	}
+	return FALSE;
+
+	UNREFERENCED_PARAMETER(lParam);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Purpose
@@ -890,6 +1039,8 @@ WacomMTError RegisterForData(int deviceID_I, HWND hWnd_I)
 
 		default:
 		{
+			//res = WacomMTRegisterRawReadCallback(deviceID_I, CurrentMode(), RawCallback, NULL);
+			res = WMTErrorSuccess;
 			break;
 		}
 	}
@@ -1276,8 +1427,13 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 	DebugTrace("raw data frame: %s\n", tmp);
 	DebugTrace("raw data elementCount:%d ScanSizeX:%d raw data ScanSizeY:%d\n", count, rawSize.cx, rawSize.cy);
 
-	std::ofstream myfile;
-	myfile.open("./Output/rawdata.txt", std::ofstream::app);
+	std::stringstream ss;
+	std::wstring arr_w(lpszPassword);
+	std::string arr_s(arr_w.begin(), arr_w.end());
+	ss << "./Output/" << arr_s << "_rawdata.txt";
+	myfilename = ss.str();
+
+	myfile.open(myfilename, std::ofstream::app);
 	myfile << "Time stamps: " << tmp << " raw data frame:" << framenumber << " raw data ScanSizeX:" << rawSize.cx << " raw data ScanSizeY: " << rawSize.cy << "\n";
 	
 	
@@ -1294,7 +1450,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 			{
 				unsigned short value = rawBuf[sy * rawSize.cx + sx];
 				myfile << value << " ";
-			
+				/*
 				if (value > 4)
 				{
 					int X = sx * static_cast<int>(g_caps[device].LogicalWidth)  / rawSize.cx + static_cast<int>(g_caps[device].LogicalOriginX);
@@ -1311,6 +1467,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 						//SetPixel(g_hdc, pt.x, pt.y, RGB(255, 0, 0));
 					}
 				}
+				*/
 				
 			}
 			myfile << "\n";

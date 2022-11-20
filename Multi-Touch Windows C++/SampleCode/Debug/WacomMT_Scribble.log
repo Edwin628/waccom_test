@@ -1,4 +1,36 @@
 ﻿  WacomMT_Scribble.cpp
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(741,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1273,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(808,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(698,10): warning C4101: 'hFontOriginal': unreferenced local variable
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(698,25): warning C4101: 'hFont1': unreferenced local variable
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(698,41): warning C4101: 'hFont3': unreferenced local variable
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1424,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include\xstring(2824,53): warning C4244: 'argument': conversion from 'wchar_t' to 'const _Elem', possible loss of data
+          with
+          [
+              _Elem=char
+          ]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include\xstring(2664): message : see reference to function template instantiation 'void std::basic_string<char,std::char_traits<char>,std::allocator<char>>::_Construct_from_iter<wchar_t*>(_Iter,const _Iter)' being compiled
+          with
+          [
+              _Iter=wchar_t *
+          ]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include\xstring(2664): message : see reference to function template instantiation 'void std::basic_string<char,std::char_traits<char>,std::allocator<char>>::_Construct_from_iter<wchar_t*>(_Iter,const _Iter)' being compiled
+          with
+          [
+              _Iter=wchar_t *
+          ]
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(824): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,0>(_Iter,_Iter,const _Alloc &)' being compiled
+          with
+          [
+              _Elem=wchar_t,
+              _Iter=std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,
+              _Alloc=std::allocator<char>
+          ]
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(824): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,0>(_Iter,_Iter,const _Alloc &)' being compiled
+          with
+          [
+              _Elem=wchar_t,
+              _Iter=std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,
+              _Alloc=std::allocator<char>
+          ]
   WacomMT_Scribble.vcxproj -> D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\Debug\WacomMT_Scribble.exe

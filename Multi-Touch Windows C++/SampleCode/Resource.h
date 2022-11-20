@@ -9,6 +9,10 @@
 #define IDD_ABOUTBOX							110
 #define IDC_ABOUT_DESC						111
 #define IDC_ABOUT_CR							112
+#define IDD_INPUTBOX							113
+#define IDC_INPUT_PROMPT						114
+#define IDC_INPUT_TEXT						115
+
 
 #define IDC_WACOMMT_SCRIBBLE				120
 
@@ -27,6 +31,7 @@
 #define IDM_ERASE								212
 #define IDM_OPTIONS_SHOW_CAPS				214
 #define IDM_OPTIONS_SHOW_POSITION_ONLY	215
+#define IDM_STOP							216
 
 #ifndef IDC_STATIC
 #define IDC_STATIC				-1
