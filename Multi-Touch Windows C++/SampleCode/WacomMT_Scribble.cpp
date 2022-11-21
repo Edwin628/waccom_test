@@ -27,6 +27,8 @@
 #include <fstream>
 #include <time.h>
 #include <windows.h>
+#include <chrono>
+
 
 #include "WacomMultiTouch.h"
 #include "WintabUtils.h"
@@ -120,6 +122,8 @@ EDataType								g_DataType = EDataType::ENoData;
 bool										g_UseHWND = true;
 bool										g_UseWinHitRect = true;
 bool										writeTofile = false;
+bool										writeFirstRow = false;
+bool										writeRawFirstRow = false;
 
 CRITICAL_SECTION						g_graphicsCriticalSection;
 
@@ -568,6 +572,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						//DialogBox(hInst,MAKEINTRESOURCE(IDD_PASSWORD),hWnd,PasswordProc);
 						ShowWindow(g_hWndInput, SW_SHOW);
 						writeTofile = true;
+						writeFirstRow = true;
+						writeRawFirstRow = true;
 
 						/*
 						std::stringstream sspen;
@@ -675,6 +681,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				{
 					std::remove(myfilename.c_str());
 					std::remove(mypenfilename.c_str());
+					writeFirstRow = true;
+					writeRawFirstRow = true;
 					ClearScreen();
 					break;
 				}
@@ -699,19 +707,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			PAINTSTRUCT ps = {0};
 			HDC hdc = BeginPaint(hWnd, &ps);
 			RECT rect;
+			HPEN pen = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
 
-			hFont2 = CreateFont(100, 42, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+			hFont1 = CreateFont(100, 42, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
 				CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Times New Roman"));
+
+			hFont2 = CreateFont(100, 42, 0, 0, FW_BOLD, FALSE, TRUE, FALSE, DEFAULT_CHARSET, OUT_OUTLINE_PRECIS,
+				CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, TEXT("Times New Roman"));
+
+			MoveToEx(hdc, 100, 50, NULL);
+			LineTo(hdc, 3000, 50);
+
+			SelectObject(hdc, hFont1);
+			SetRect(&rect, 100, 100, 1800, 200);
+			// GetClientRect(hWnd, &rect);
+			DrawText(hdc, TEXT("Plese write the following sentence:\n"), -1, &rect, DT_LEFT);
 			SelectObject(hdc, hFont2);
-			GetClientRect(hWnd, &rect);
-			DrawText(hdc, TEXT("plese write the following sentence:\n test input"), -1, &rect, DT_CENTER | DT_VCENTER);
+			// GetClientRect(hWnd, &rect);
+			SetRect(&rect, 100, 250, 1800, 350);
+			DrawText(hdc, TEXT("test input"), -1, &rect, DT_LEFT);
+
+			
+			MoveToEx(hdc, 100, 400, NULL);
+			LineTo(hdc, 3000, 400);
 
 			// Forcing a "no-op" LineTo allows display to refresh pen data, upon getting
 			// this WM_PAINT message due to the InvalidateRect() call in DrawPenData().
 			// If also drawing due to finger ellipses, then this hack wouldn't be needed, but
 			// we want to use the pen by itself (no touch data).
 			// Hack seems to need to do a drawing operation; MoveToEx by itself doesn't work.
-			LineTo(hdc, 0, 0);
+			//LineTo(hdc, 0, 0);
 			EndPaint(hWnd, &ps);
 			break;
 		}
@@ -822,13 +847,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				std::stringstream sspen;
 				std::wstring arr_w(lpszPassword);
 				std::string arr_s(arr_w.begin(), arr_w.end());
-				sspen << "./Output/" << arr_s << "_pendata.txt";
+				sspen << "./Output/" << arr_s << "_pendata.csv";
 				mypenfilename = sspen.str();
 
+				/*
 				if (writeTofile) {
 					mypenfile.open(mypenfilename, std::ofstream::app);
 					mypenfile << "Time stamps: " << tmp_pen << "pen X:" << ptNew.x << " pen Y:" << ptNew.y << "\n" << " pen Orientation orAltitude: "
 						<< porientationNew.orAltitude << " orAzimuth: " << porientationNew.orAzimuth << " orTwist : " << porientationNew.orTwist << "\n";
+					mypenfile.close();
+				}
+				*/
+				if (writeTofile) {
+					mypenfile.open(mypenfilename, std::ofstream::app);
+					if (writeFirstRow) {
+						mypenfile << "TimeStamps " << "penX " << "penY " << "orAltitude " << "orAzimuth " << "orTwist " << "pressure" << "\n";
+						writeFirstRow = false;
+					}
+					uint64_t  unix_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+					mypenfile << unix_timestamp << " " << ptNew.x <<" " << ptNew.y <<" " << porientationNew.orAltitude <<" "
+						<< porientationNew.orAzimuth << " " << porientationNew.orTwist <<" "<< prsNew<< "\n";
 					mypenfile.close();
 				}
 				
@@ -1423,18 +1461,30 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 	char tmp[64] = { NULL };
 	sprintf(tmp, "%4d-%02d-%02d %02d:%02d:%02d ms:%03d", sys.wYear, sys.wMonth, sys.wDay, sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
 
+	//uint64_t  unix_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
 	DebugTrace("raw data frame:%d\n", framenumber);
-	DebugTrace("raw data frame: %s\n", tmp);
+	DebugTrace("raw data time: %s\n", tmp);
+	//DebugTrace("raw data unix_timestamp: %llu\n", unix_timestamp);
 	DebugTrace("raw data elementCount:%d ScanSizeX:%d raw data ScanSizeY:%d\n", count, rawSize.cx, rawSize.cy);
 
 	std::stringstream ss;
 	std::wstring arr_w(lpszPassword);
 	std::string arr_s(arr_w.begin(), arr_w.end());
-	ss << "./Output/" << arr_s << "_rawdata.txt";
+	ss << "./Output/" << arr_s << "_rawdata.csv";
 	myfilename = ss.str();
 
 	myfile.open(myfilename, std::ofstream::app);
-	myfile << "Time stamps: " << tmp << " raw data frame:" << framenumber << " raw data ScanSizeX:" << rawSize.cx << " raw data ScanSizeY: " << rawSize.cy << "\n";
+	if (writeRawFirstRow) {
+		myfile << "TimeStamps " << "ScanSizeX " << "ScanSizeY";
+		for (int i = 0; i < rawSize.cx * rawSize.cy; i++) {
+			myfile <<" " << i;
+		}
+		myfile << "\n";
+		writeRawFirstRow = false;
+	}
+	uint64_t  unix_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+	myfile << unix_timestamp << " " <<  rawSize.cx << " " << rawSize.cy;
 	
 	
 	if (count && rawBuf)
@@ -1449,7 +1499,7 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 			for (int sx = 0; sx < rawSize.cx; sx++)
 			{
 				unsigned short value = rawBuf[sy * rawSize.cx + sx];
-				myfile << value << " ";
+				myfile << " " << value;
 				/*
 				if (value > 4)
 				{
@@ -1470,8 +1520,9 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 				*/
 				
 			}
-			myfile << "\n";
+			//myfile << "\n";
 		}
+		myfile << "\n";
 		SelectObject(g_hdc, oldPen);
 		DeleteObject(pen);
 	}
