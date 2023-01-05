@@ -1,8 +1,11 @@
 ﻿  WacomMT_Scribble.cpp
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(833,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(706,10): warning C4101: 'hFontOriginal': unreferenced local variable
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(706,41): warning C4101: 'hFont3': unreferenced local variable
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1462,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\resource.h(20,1): warning C4005: 'IDC_SCORE_TEXT': macro redefinition
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\resource.h(17): message : see previous definition of 'IDC_SCORE_TEXT'
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(916,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(789,10): warning C4101: 'hFontOriginal': unreferenced local variable
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(789,41): warning C4101: 'hFont3': unreferenced local variable
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(991,35): warning C4129: '.': unrecognized character escape sequence
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1784,2): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
 C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.31629\include\xstring(2824,53): warning C4244: 'argument': conversion from 'wchar_t' to 'const _Elem', possible loss of data
           with
           [
@@ -18,14 +21,14 @@ C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.33.3162
           [
               _Iter=wchar_t *
           ]
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(849): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,0>(_Iter,_Iter,const _Alloc &)' being compiled
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1096): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,0>(_Iter,_Iter,const _Alloc &)' being compiled
           with
           [
               _Elem=wchar_t,
               _Iter=std::_String_iterator<std::_String_val<std::_Simple_types<wchar_t>>>,
               _Alloc=std::allocator<char>
           ]
-D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(849): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,0>(_Iter,_Iter,const _Alloc &)' being compiled
+D:\aibin\Wacom_test\Multi-Touch Windows C++\SampleCode\WacomMT_Scribble.cpp(1096): message : see reference to function template instantiation 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string<std::_String_iterator<std::_String_val<std::_Simple_types<_Elem>>>,0>(_Iter,_Iter,const _Alloc &)' being compiled
           with
           [
               _Elem=wchar_t,

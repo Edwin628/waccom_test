@@ -12,6 +12,12 @@
 #define IDD_INPUTBOX							113
 #define IDC_INPUT_PROMPT						114
 #define IDC_INPUT_TEXT						115
+#define IDD_SCOREBOX							116
+#define IDC_SCORE_PROMPT						117
+#define IDC_SCORE_TEXT						119
+#define IDC_AT_TEXT						109
+#define IDC_POS_TEXT						108
+#define IDC_SCORE_TEXT						107
 
 
 #define IDC_WACOMMT_SCRIBBLE				120

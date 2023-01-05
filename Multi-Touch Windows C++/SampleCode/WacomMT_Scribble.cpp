@@ -28,6 +28,7 @@
 #include <time.h>
 #include <windows.h>
 #include <chrono>
+//#include <Python.h>
 
 
 #include "WacomMultiTouch.h"
@@ -49,6 +50,7 @@
 #define PACKETDATA	(PK_X | PK_Y | PK_Z | PK_ORIENTATION | PK_BUTTONS | PK_NORMAL_PRESSURE)
 #define PACKETMODE	PK_BUTTONS
 #include "pktdef.h"
+#include <regex>
 
 // Small factor to render display tablet finger circles.
 // to pixels assuming .27 pixel size. Sould use system api to get this value.
@@ -79,14 +81,32 @@ std::ofstream							mypenfile;
 std::ofstream							myfile;
 std::string								mypenfilename;
 std::string								myfilename;
+
+std::string								userattempt;
+double								score_int;
+int attempt_int;
+int pos_id;
+
+std::string score_string;
+
 TCHAR lpszPassword[16];
 WORD cchPassword;
+
+TCHAR lpszScore[8];
+WORD cchScore;
+
+TCHAR lpszAttempttime[4];
+WORD cchAttempttime;
+
+TCHAR lpszPosture[4];
+WORD cchPosture;
 
 
 HWND										g_mainWnd = NULL;
 HDC										g_hdc = NULL;
 HWND										g_hWndAbout = NULL;
 HWND										g_hWndInput = NULL;
+HWND										g_hWndScore = NULL;
 int										g_maxPressure = 1024;
 
 // Cached client rect (system coordinates).
@@ -135,6 +155,7 @@ BOOL					InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	PasswordProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK	ScoreProc(HWND, UINT, WPARAM, LPARAM);
 void					ClearScreen();
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -196,6 +217,17 @@ WacomMTProcessingMode CurrentMode(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+uint64_t getdefTimestamps(uint64_t time) {
+	if (time % 10 >= 5) {
+		return (time / 10) * 10 + 5;
+	}
+	else {
+		return (time / 10) * 10;
+	}
+}
+
+
 
 std::wstring GetTitle(void)
 {
@@ -567,10 +599,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				case IDM_RAW:
 				{
 					if (wmId == IDM_RAW) {
+
+
 						g_hWndInput = CreateDialog(hInst, MAKEINTRESOURCE(IDD_INPUTBOX), hWnd, PasswordProc);
 						//g_hWndInput = CreateWindow(inputNameTitle.c_str(), 0, WS_BORDER | WS_CHILD | WS_VISIBLE, 56, 10, 50, 18, hWnd, 0, hInst, 0);
 						//DialogBox(hInst,MAKEINTRESOURCE(IDD_PASSWORD),hWnd,PasswordProc);
 						ShowWindow(g_hWndInput, SW_SHOW);
+
+						/*
+						std::wstring arr_score(lpszScore);
+						std::string score_string(arr_score.begin(), arr_score.end());
+						//score_int = std::stof(score_string.c_str());
+
+						DebugTrace(score_string.c_str());
+
+						std::wstring arr_w(lpszPassword);
+
+						std::stringstream sspen;
+						std::string arr_pen(arr_w.begin(), arr_w.end());
+						sspen << "./Output/" << arr_pen << "_pendata.csv";
+						mypenfilename = sspen.str();
+						DebugTrace(mypenfilename.c_str());
+
+						std::stringstream ss;
+						std::string arr_raw(arr_w.begin(), arr_w.end());
+						ss << "./Output/" << arr_raw << "_rawdata.csv";
+						myfilename = ss.str();
+						DebugTrace(myfilename.c_str());
+						*/
+
 						writeTofile = true;
 						writeFirstRow = true;
 						writeRawFirstRow = true;
@@ -588,9 +645,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 						ss << "./Output/" << arr_s << "_rawdata.txt";
 						myfilename = ss.str();
 						
+						
+						DebugTrace("Before Py_initialize\n");
+						Py_Initialize();//-Initialize python interpreter
+						DebugTrace("After Py_initialize\n");
+						if (!Py_IsInitialized())
+						{
+							PyRun_SimpleString("print 'inital error!' ");
+							return -1;
+						}
+						//FILE* PScriptFile = fopen("D:\\aibin\\LeapMotion_test\\handDetect\\test.py", "r+");
+
+						PyObject* obj = Py_BuildValue("s", "D:\\aibin\\LeapMotion_test\\handDetect\\test.py");
+						FILE* PScriptFile = _Py_fopen_obj(obj, "r+");
+
+						if (PScriptFile) {
+							DebugTrace("Find Scrip file\n");
+							PyRun_SimpleFile(PScriptFile, "test.py");
+							fclose(PScriptFile);
+						}
+
+						Py_Finalize();//---Clean up the python environment and release resources
+
 						*/
 					}
 					else { writeTofile = false; }
+
+
+					
+
 					EDataType typeHit = (wmId == IDM_STOP) ? EDataType::ENoData  : EDataType::ERawData;
 					for (size_t idx = 0; idx < g_devices.size(); idx++)
 					{
@@ -725,7 +808,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SelectObject(hdc, hFont2);
 			// GetClientRect(hWnd, &rect);
 			SetRect(&rect, 100, 250, 1800, 350);
-			DrawText(hdc, TEXT("test input"), -1, &rect, DT_LEFT);
+			DrawText(hdc, TEXT("Today is a good day to write."), -1, &rect, DT_LEFT);
 
 			
 			MoveToEx(hdc, 100, 400, NULL);
@@ -832,8 +915,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			char tmp_pen[64] = { NULL };
 			sprintf(tmp_pen, "%4d-%02d-%02d %02d:%02d:%02d ms:%03d", sys.wYear, sys.wMonth, sys.wDay, sys.wHour, sys.wMinute, sys.wSecond, sys.wMilliseconds);
 			
-			DebugTrace("This is msg from wintab for pendata\n");
-			DebugTrace("Time is: %s\n", tmp_pen);
+			//DebugTrace("This is msg from wintab for pendata\n");
+			//DebugTrace("Time is: %s\n", tmp_pen);
 
 			if (gpWTPacket((HCTX)lParam, wParam, &wintabPkt))
 			{
@@ -843,12 +926,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				prsNew = wintabPkt.pkNormalPressure;
 				porientationNew = wintabPkt.pkOrientation;
 
-
+				/*
 				std::stringstream sspen;
 				std::wstring arr_w(lpszPassword);
 				std::string arr_s(arr_w.begin(), arr_w.end());
 				sspen << "./Output/" << arr_s << "_pendata.csv";
 				mypenfilename = sspen.str();
+				*/
+				
 
 				/*
 				if (writeTofile) {
@@ -861,11 +946,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if (writeTofile) {
 					mypenfile.open(mypenfilename, std::ofstream::app);
 					if (writeFirstRow) {
-						mypenfile << "TimeStamps " << "penX " << "penY " << "orAltitude " << "orAzimuth " << "orTwist " << "pressure" << "\n";
+						mypenfile << "UserAttempt " << "Posture " << "Score " << "TimeStamps " << "MergeTimeStamps " << "penX " << "penY " << "orAltitude " << "orAzimuth " << "orTwist " << "pressure" << "\n";
 						writeFirstRow = false;
 					}
 					uint64_t  unix_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-					mypenfile << unix_timestamp << " " << ptNew.x <<" " << ptNew.y <<" " << porientationNew.orAltitude <<" "
+					uint64_t  unix_timestamp_def = getdefTimestamps(unix_timestamp);
+					mypenfile << userattempt << " " << pos_id << " " << score_int << " " << unix_timestamp << " " << unix_timestamp_def << " " << ptNew.x << " " << ptNew.y << " " << porientationNew.orAltitude << " "
 						<< porientationNew.orAzimuth << " " << porientationNew.orTwist <<" "<< prsNew<< "\n";
 					mypenfile.close();
 				}
@@ -874,12 +960,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if ((ptNew.x != ptOld.x) || (ptNew.y != ptOld.y))
 				{
 					bool bMoveToPoint = ((prsOld == 0) && (prsNew > 0));
+					/*
 					DebugTrace("prsOld: %i, prsNew: %i, ptNew: [%i,%i], ptOld: [%i,%i], moveToPoint: %s\n",
 						prsOld, prsNew,
 						ptNew.x, ptNew.y,
 						ptOld.x, ptOld.y,
 						(bMoveToPoint ? "Move" : "Draw"));
 					DebugTrace("About pen orientation: orAltitude:%d, orAzimuth:%d, orTwist:%d \n", porientationNew.orAltitude, porientationNew.orAzimuth, porientationNew.orTwist);
+					*/
 					DrawPenData(ptNew, prsNew, bMoveToPoint);
 
 					// Keep track of last time we did move or draw.
@@ -899,11 +987,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+bool is_number(const std::string& s) {
+	return regex_match(s, std::regex("[0-9]+([\.][0-9]+)?"));
+}
 
+bool is_integer(const std::string& s) {
+	return regex_match(s, std::regex("[0-9]+"));
+}
+
+int posture_label(const std::string& s) {
+	if (s.compare("DT") == 0) {
+		return 0;
+	}
+	else if(s.compare("LT") == 0) {
+		return 1;
+	}
+	else if (s.compare("DQ") == 0) {
+		return 2;
+	}
+	else if (s.compare("LQ") == 0) {
+		return 3;
+	}
+	else if (s.compare("UP") == 0) {
+		return 4;
+	}
+	else if (s.compare("OT") == 0) {
+		return 5;
+	}
+	else {
+		return 6;
+	}
+}
 
 INT_PTR CALLBACK PasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	
 
 	switch (message)
 	{
@@ -925,7 +1042,7 @@ INT_PTR CALLBACK PasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 		}
 		switch (wParam)
 		{
-		case IDOK:
+		case IDOK:{
 			// Get number of characters. 
 			cchPassword = (WORD)SendDlgItemMessage(hDlg, IDC_INPUT_TEXT, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
 			if (cchPassword >= 16)
@@ -951,7 +1068,213 @@ INT_PTR CALLBACK PasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 			lpszPassword[cchPassword] = 0;
 
 
-			MessageBox(hDlg, lpszPassword, L"Did it work?", MB_OK);
+			// ======================================  score =================================================
+			cchScore = (WORD)SendDlgItemMessage(hDlg, IDC_SCORE_TEXT, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			if (cchScore >= 8)
+			{
+				MessageBox(hDlg, L"Invalid Score(Too long).", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			else if (cchScore == 0)
+			{
+				MessageBox(hDlg, L"No Score entered.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+
+			// Put the number of characters into first word of buffer. 
+			*((LPWORD)lpszScore) = cchScore;
+
+			// Get the characters. 
+			SendDlgItemMessage(hDlg, IDC_SCORE_TEXT, EM_GETLINE, (WPARAM)0, (LPARAM)lpszScore);
+
+			// Null-terminate the string. 
+			lpszScore[cchScore] = 0;
+
+			std::wstring arr_score(lpszScore);
+			std::string score_string(arr_score.begin(), arr_score.end());
+			if (!is_number(score_string)) {
+				MessageBox(hDlg, L"Invalid Score(Not a number).", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			DebugTrace("Score:");
+			DebugTrace(score_string.c_str());
+			DebugTrace("\n");
+			score_int = std::atof(score_string.c_str());
+			DebugTrace("int:%f\n", score_int);
+
+			// ======================================  attempt time ==========================================
+
+			cchAttempttime = (WORD)SendDlgItemMessage(hDlg, IDC_AT_TEXT, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			if (cchAttempttime >= 4)
+			{
+				MessageBox(hDlg, L"Invalid attempt time(Too long).", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			else if (cchAttempttime == 0)
+			{
+				MessageBox(hDlg, L"No attempt time entered.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+
+			// Put the number of characters into first word of buffer. 
+			*((LPWORD)lpszAttempttime) = cchAttempttime;
+
+			// Get the characters. 
+			SendDlgItemMessage(hDlg, IDC_AT_TEXT, EM_GETLINE, (WPARAM)0, (LPARAM)lpszAttempttime);
+
+			// Null-terminate the string. 
+			lpszAttempttime[cchAttempttime] = 0;
+
+			std::wstring arr_at(lpszAttempttime);
+			std::string at_string(arr_at.begin(), arr_at.end());
+			if (!is_integer(at_string)) {
+				MessageBox(hDlg, L"Invalid attempt time(Not a number).", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			DebugTrace("Attempt Time:");
+			DebugTrace(at_string.c_str());
+			DebugTrace("\n");
+			attempt_int = std::atoi(score_string.c_str());
+
+
+			// ====================================== posture ================================================
+			cchPosture = (WORD)SendDlgItemMessage(hDlg, IDC_POS_TEXT, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			if (cchPosture >= 4)
+			{
+				MessageBox(hDlg, L"Invalid Posture(Too long).", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			else if (cchPosture == 0)
+			{
+				MessageBox(hDlg, L"No characters entered.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+
+			// Put the number of characters into first word of buffer. 
+			*((LPWORD)lpszPosture) = cchPosture;
+
+			// Get the characters. 
+			SendDlgItemMessage(hDlg, IDC_POS_TEXT, EM_GETLINE, (WPARAM)0, (LPARAM)lpszPosture);
+
+			// Null-terminate the string. 
+			lpszPosture[cchPosture] = 0;
+
+			std::wstring arr_pos(lpszPosture);
+			std::string pos_string(arr_pos.begin(), arr_pos.end());
+
+
+			pos_id = posture_label(pos_string);
+			if (pos_id == 6) {
+				MessageBox(hDlg, L"Invalid Posture(Wrong input).", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			DebugTrace("Posture:%d ", pos_id);
+			DebugTrace(pos_string.c_str());
+			DebugTrace("\n");
+
+			//MessageBox(hDlg, lpszPassword, L"Ready to gooooo:)", MB_OK);
+
+			// Call a local password-parsing function. 
+			// ParsePassword(lpszPassword);
+			
+
+
+			std::wstring arr_w(lpszPassword);
+			std::string arr_user(arr_w.begin(), arr_w.end());
+
+			userattempt = arr_user + at_string;
+
+			DebugTrace(userattempt.c_str());
+
+			std::stringstream sspen;
+			//std::string arr_pen(arr_w.begin(), arr_w.end());
+			sspen << "./Output/" << arr_user <<"_" << at_string <<"_"<< pos_string << "_pendata.csv";
+			mypenfilename = sspen.str();
+			DebugTrace(mypenfilename.c_str());
+			DebugTrace(" ");
+
+			std::stringstream ss;
+			//std::string arr_raw(arr_w.begin(), arr_w.end());
+			ss << "./Output/" << arr_user << "_" << at_string << "_" << pos_string << "_rawdata.csv";
+			myfilename = ss.str();
+			DebugTrace(myfilename.c_str());
+			DebugTrace("\n");
+
+			EndDialog(hDlg, TRUE);
+			return TRUE;
+		}
+
+		case IDCANCEL:
+			EndDialog(hDlg, TRUE);
+			return TRUE;
+		}
+		return 0;
+	}
+	return FALSE;
+
+	UNREFERENCED_PARAMETER(lParam);
+}
+
+INT_PTR CALLBACK ScoreProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
+
+	switch (message)
+	{
+	case WM_INITDIALOG:
+		// Set password character to a plus sign (+) 
+		// SendDlgItemMessage(hDlg, IDC_INPUT_TEXT ,EM_SETPASSWORDCHAR,(WPARAM)'+',(LPARAM)0);
+
+		// Set the default push button to "Cancel." 
+		SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDCANCEL, (LPARAM)0);
+
+		return TRUE;
+
+	case WM_COMMAND:
+		// Set the default push button to "OK" when the user enters text. 
+		if (HIWORD(wParam) == EN_CHANGE &&
+			LOWORD(wParam) == IDC_INPUT_TEXT)
+		{
+			SendMessage(hDlg, DM_SETDEFID, (WPARAM)IDOK, (LPARAM)0);
+		}
+		switch (wParam)
+		{
+		case IDOK:
+			// Get number of characters. 
+			cchScore = (WORD)SendDlgItemMessage(hDlg, IDC_INPUT_TEXT, EM_LINELENGTH, (WPARAM)0, (LPARAM)0);
+			if (cchScore >= 8)
+			{
+				MessageBox(hDlg, L"Invalid Score.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+			else if (cchScore == 0)
+			{
+				MessageBox(hDlg, L"No characters entered.", L"Error", MB_OK);
+				EndDialog(hDlg, TRUE);
+				return FALSE;
+			}
+
+			// Put the number of characters into first word of buffer. 
+			*((LPWORD)lpszScore) = cchScore;
+
+			// Get the characters. 
+			SendDlgItemMessage(hDlg, IDC_INPUT_TEXT, EM_GETLINE, (WPARAM)0, (LPARAM)lpszScore);
+
+			// Null-terminate the string. 
+			lpszScore[cchScore] = 0;
+
+
+			//MessageBox(hDlg, lpszPassword, L"Ready to gooooo:)", MB_OK);
 
 			// Call a local password-parsing function. 
 			// ParsePassword(lpszPassword);
@@ -969,7 +1292,6 @@ INT_PTR CALLBACK PasswordProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
 
 	UNREFERENCED_PARAMETER(lParam);
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Purpose
@@ -1463,20 +1785,23 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 
 	//uint64_t  unix_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-	DebugTrace("raw data frame:%d\n", framenumber);
-	DebugTrace("raw data time: %s\n", tmp);
+	//DebugTrace("raw data frame:%d\n", framenumber);
+	//DebugTrace("raw data time: %s\n", tmp);
 	//DebugTrace("raw data unix_timestamp: %llu\n", unix_timestamp);
-	DebugTrace("raw data elementCount:%d ScanSizeX:%d raw data ScanSizeY:%d\n", count, rawSize.cx, rawSize.cy);
+	//DebugTrace("raw data elementCount:%d ScanSizeX:%d raw data ScanSizeY:%d\n", count, rawSize.cx, rawSize.cy);
 
+	/*
 	std::stringstream ss;
 	std::wstring arr_w(lpszPassword);
 	std::string arr_s(arr_w.begin(), arr_w.end());
 	ss << "./Output/" << arr_s << "_rawdata.csv";
 	myfilename = ss.str();
+	*/
+	
 
 	myfile.open(myfilename, std::ofstream::app);
 	if (writeRawFirstRow) {
-		myfile << "TimeStamps " << "ScanSizeX " << "ScanSizeY";
+		myfile << "TimeStamps " << "MergeTimeStamps " << "ScanSizeX " << "ScanSizeY";
 		for (int i = 0; i < rawSize.cx * rawSize.cy; i++) {
 			myfile <<" " << i;
 		}
@@ -1484,7 +1809,8 @@ void DrawRawData(int count, unsigned short* rawBuf, int device, int framenumber)
 		writeRawFirstRow = false;
 	}
 	uint64_t  unix_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-	myfile << unix_timestamp << " " <<  rawSize.cx << " " << rawSize.cy;
+	uint64_t  unix_timestamp_def = getdefTimestamps(unix_timestamp);
+	myfile << unix_timestamp << " " << unix_timestamp_def << " " <<  rawSize.cx << " " << rawSize.cy;
 	
 	
 	if (count && rawBuf)
@@ -1766,18 +2092,18 @@ void DrawPenData(POINT point_I, UINT pressure_I, bool bMoveToPoint_I)
 		// Convert from screen to client coordinates to render.
 		// This will let us put the app window anywhere on the desktop.
 		::ScreenToClient(g_mainWnd, &ptNew);
-		DebugTrace("\tX:%ld  Y:%ld\n", ptNew.x, ptNew.y);
+		//DebugTrace("\tX:%ld  Y:%ld\n", ptNew.x, ptNew.y);
 
 		// Move to a starting point if so directed.
 		// Prevents streaks from last draw point or edge of client.
 		if (bMoveToPoint_I)
 		{
-			DebugTrace("MoveTo: %i, %i\n", ptNew.x, ptNew.y);
+			//DebugTrace("MoveTo: %i, %i\n", ptNew.x, ptNew.y);
 			MoveToEx(g_hdc, ptNew.x, ptNew.y, NULL);
 		}
 		else
 		{
-			DebugTrace("LineTo: %i, %i\n", ptNew.x, ptNew.y);
+			//DebugTrace("LineTo: %i, %i\n", ptNew.x, ptNew.y);
 			LineTo(g_hdc, ptNew.x, ptNew.y);
 		}
 	}
